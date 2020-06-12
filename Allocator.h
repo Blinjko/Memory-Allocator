@@ -20,8 +20,21 @@ limitations under the License.
 // as it stands now this is just a class template and the functions return types
 // and parameters are TBD
 
-struct Block;    // ToDo, Define this
-struct EndTag;   // ToDo, Define this
+namespace Alloc
+{
+
+struct Block
+{
+    bool free;                 // is this block of memory free
+    std::size_t segmentSize;   // size of the memory segment, not including the Block header or EndTag
+    Block();                   // constructor
+};
+
+struct EndTag
+{
+    std::size_t segmentSize;   // size of the segment the tag is attached to
+    EndTag();                  // constructor
+};
 
 class Allocator
 {
@@ -39,7 +52,7 @@ class Allocator
     ~Allocator();                  // Allocator destructor
 
     void allocate();               // allocates a given amount of memory
-    void free();                   // frees a section of memory
+    void deallocate();                   // frees a section of memory
     
     void heapSize();               // returns size of the heap
     void memoryAllocated();        // return the number of bytes allocated
@@ -54,3 +67,5 @@ class Allocator
     void expandHeap();             // expands the size of the heap
     void shortenHeap();            // shortens the size of the heap
 };
+
+}
