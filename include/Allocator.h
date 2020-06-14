@@ -15,57 +15,52 @@ limitations under the License.
 */
 
 #pragma once
-
+#include <cstddef>
 
 // as it stands now this is just a class template and the functions return types
 // and parameters are TBD
 
 namespace Alloc
 {
+const std::size_t bitAlignment = 16;// bit alignment, every piece of memory handled will be a multiple of this
 
-struct Block
+struct Tag
 {
-    bool free;                 // is this block of memory free
-    std::size_t segmentSize;   // size of the memory segment, not including the Block header or EndTag
-    Block();                   // constructor
+    std::size_t segmentSize;        // size of the memory segment, not including the header tag or footer tag
+    bool free;                      // is this block of memory free
+    bool isHeader;                  // is this tag a header true = yes , false = no
 };
 
-struct EndTag
-{
-    std::size_t segmentSize;   // size of the segment the tag is attached to
-    EndTag();                  // constructor
-};
 
 class Allocator
 {
     void *const m_heapStart;                 // holds pointer to start of heap, return value of initial call to sbrk(0)
-    void *m_headEnd;                         // holds a pointer to where the heap currently ends
+    void *m_heapEnd;                         // holds a pointer to where the heap currently ends
     
     std::size_t m_heapSize;                  // current heap size in bytes
     std::size_t m_heapMemoryAllocated;       // total heap memory allocated in bytes will always be <= m_heapSize
 
-    static bool m_allocatorActive;           // has the allocator been instantiated / activated
-    
     public:
+    static const bool m_allocatorActive;     // has the allocator been instantiated / activated
 
-    Allocator();                   // Allocator contructor
-    ~Allocator();                  // Allocator destructor
+    Allocator(std::size_t);                  // Allocator contructor
+    ~Allocator();                            // Allocator destructor
 
-    void allocate();               // allocates a given amount of memory
-    void deallocate();                   // frees a section of memory
+    void allocate();                         // allocates a given amount of memory
+    void deallocate();                       // frees a section of memory
     
-    void heapSize();               // returns size of the heap
-    void memoryAllocated();        // return the number of bytes allocated
+    void heapSize();                         // returns size of the heap
+    void memoryAllocated();                  // return the number of bytes allocated
 
-    void active();                 // returns wheather the Allocator is active or not
+    void active();                           // returns wheather the Allocator is active or not
 
     private:
 
-    void mergeBlocks();            // merges two blocks of memory together
-    void splitBlock();             // splits a block of memory into 2 different pieces
+    void mergeBlocks();                      // merges two blocks of memory together
+    void splitBlock();                       // splits a block of memory into 2 different pieces
     
-    void expandHeap();             // expands the size of the heap
-    void shortenHeap();            // shortens the size of the heap
+    void expandHeap();                       // expands the size of the heap
+    void shortenHeap();                      // shortens the size of the heap
 };
 
 }
