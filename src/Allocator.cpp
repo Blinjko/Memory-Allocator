@@ -50,3 +50,43 @@ Allocator::Allocator(std::size_t initialSize) :
     initialBlockFooter->free = true;
     initialBlockFooter->isHeader = false;
 }
+
+// splits the given block into a block with the segmentSegment size of newSize
+// and creates a new block wich holds the remaining amount
+Tag *Allocator::splitBlock(Tag* blockHeader, std::size_t newSize)
+{
+    // safety conditional
+    if(blockHeader->segmentSize < newSize || !blockHeader->isHeader)
+        return nullptr;
+
+    // make a footer for the new block
+    Tag *newBlockFooter = blockHeader + (sizeof(Tag) + newSize) / sizeof(Tag);
+
+    // set the first block's footers variables
+    newBlockFooter->segmentSize = newSize;
+    newBlockFooter->free = blockHeader->free;
+    newBlockFooter->isHeader = false;
+
+
+    // make the second block's header
+    Tag *secondBlockHeader = newBlockFooter + sizeof(Tag) / sizeof(Tag);
+
+    // set the second block's header variables
+    // every time a block spilts is loses sizeof(Tag) * 2 bytes for the new footer and new header needed
+    secondBlockHeader->segmentSize = blockHeader->segmentSize - (newSize + sizeof(Tag)*2);
+    secondBlockHeader->free = true;
+    secondBlockHeader->isHeader = true;
+
+    // set the second block's footer
+    Tag *secondBlockFooter = secondBlockHeader + (sizeof(Tag) + secondBlockHeader->segmentSize) / sizeof(Tag);
+    
+    // set the second block's footer's variables
+    secondBlockFooter->segmentSize = secondBlockHeader->segmentSize;
+    secondBlockFooter->free = true;
+    secondBlockFooter->isHeader = false;
+    
+    // set the original block headers segmentSize to the newSize
+    blockHeader->segmentSize = newSize;
+
+    return blockHeader;
+}

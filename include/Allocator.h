@@ -57,7 +57,7 @@ class Allocator
     private:
 
     void mergeBlocks();                      // merges two blocks of memory together
-    void splitBlock();                       // splits a block of memory into 2 different pieces
+    Tag *splitBlock(Tag*, std::size_t);      // splits a block of memory into 2 different pieces given a header pointer and the blocks new size
     
     void expandHeap();                       // expands the size of the heap
     void shortenHeap();                      // shortens the size of the heap
