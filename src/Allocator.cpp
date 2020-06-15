@@ -53,7 +53,7 @@ Allocator::Allocator(std::size_t initialSize) :
 
 // splits the given block into a block with the segmentSegment size of newSize
 // and creates a new block wich holds the remaining amount
-Tag *Allocator::splitBlock(Tag* blockHeader, std::size_t newSize)
+Tag* Allocator::splitBlock(Tag *blockHeader, std::size_t newSize)
 {
     // safety conditional
     if(blockHeader->segmentSize < newSize || !blockHeader->isHeader)
@@ -88,5 +88,62 @@ Tag *Allocator::splitBlock(Tag* blockHeader, std::size_t newSize)
     // set the original block headers segmentSize to the newSize
     blockHeader->segmentSize = newSize;
 
+    return blockHeader;
+}
+
+// given a Tag pointer to a header of a block it will merge the blocks before and after the pointer
+// with the block the pointer is pointing to, as long as they are free
+Tag* Allocator::mergeBlocks(Tag *blockHeader)
+{
+    // safety conditional
+    if(!blockHeader->isHeader || !blockHeader->free)
+        return nullptr;
+
+    Tag *blockFooter = blockHeader + (blockHeader->segmentSize + sizeof(Tag)) / sizeof(Tag);
+
+    // if the header is not the first block and the previous block is free
+    if(blockHeader != m_heapStart && (blockHeader - sizeof(Tag) / sizeof(Tag))->free)
+    {
+        // get the previous blocks footer
+        Tag *previousBlockFooter = blockHeader - sizeof(Tag) / sizeof(Tag);
+
+        // get the prebious blocks header, which is the footer - segmentSize + sizeof(Tag)
+        Tag *previousBlockHeader = previousBlockFooter - (previousBlockFooter->segmentSize + sizeof(Tag)) / sizeof(Tag);
+
+        // calcuate the new segment size
+        std::size_t segmentSize = previousBlockHeader->segmentSize + sizeof(Tag) + sizeof(Tag) + blockHeader->segmentSize;
+
+        // change the blockHeader to the previous block header, since they have merged
+        blockHeader = previousBlockHeader;
+
+        // set the segmentSize of the header
+        blockHeader->segmentSize = segmentSize; 
+
+        // set the footer's segmentSize
+        blockFooter->segmentSize = segmentSize;
+    }
+
+    // if the block footer plus its size, is not equal to the heapEnd and the next block is free, execute this
+    // + 1 is equal to sizeof(Tag) / sizeof(Tag), but had to put 1 here because compiler was complaining
+    if((blockFooter + 1) != m_heapEnd && (blockFooter + sizeof(Tag) / sizeof(Tag))->free)
+    {
+        // get the next blocks header
+        Tag *nextBlockHeader = blockFooter + sizeof(Tag) / sizeof(Tag);
+
+        // get the next blocks footer
+        Tag *nextBlockFooter = nextBlockHeader + (nextBlockHeader->segmentSize + sizeof(Tag)) / sizeof(Tag);
+
+        // calculate segment size
+        std::size_t segmentSize = blockHeader->segmentSize + sizeof(Tag) + sizeof(Tag) + nextBlockFooter->segmentSize;
+
+        // set the new segmentSize for blockHeader
+        blockHeader->segmentSize = segmentSize;
+
+        // set the new segmentSize for the nextBlockFooter
+        nextBlockFooter->segmentSize = segmentSize;
+
+        // set the blockFooter to nextBlockFooter
+        blockFooter = nextBlockFooter;
+    }
     return blockHeader;
 }

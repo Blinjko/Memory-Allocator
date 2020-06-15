@@ -31,7 +31,6 @@ struct Tag
     bool isHeader;                  // is this tag a header true = yes , false = no
 };
 
-
 class Allocator
 {
     void *const m_heapStart;                 // holds pointer to start of heap, return value of initial call to sbrk(0)
@@ -56,8 +55,8 @@ class Allocator
 
     private:
 
-    void mergeBlocks();                      // merges two blocks of memory together
-    Tag *splitBlock(Tag*, std::size_t);      // splits a block of memory into 2 different pieces given a header pointer and the blocks new size
+    Tag* mergeBlocks(Tag*);                  // given a pointer it merges the bock before with the pointer and the block after it with the pointer as long as they are free
+    Tag* splitBlock(Tag*, std::size_t);      // splits a block of memory into 2 different pieces given a header pointer and the blocks new size
     
     void expandHeap();                       // expands the size of the heap
     void shortenHeap();                      // shortens the size of the heap
