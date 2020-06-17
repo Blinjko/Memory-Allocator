@@ -58,7 +58,7 @@ class Allocator
     Tag* mergeBlocks(Tag*);                  // given a pointer it merges the bock before with the pointer and the block after it with the pointer as long as they are free
     Tag* splitBlock(Tag*, std::size_t);      // splits a block of memory into 2 different pieces given a header pointer and the blocks new size
     
-    void expandHeap();                       // expands the size of the heap
+    void* expandHeap(std::size_t);           // expands the size of the heap, returns nullptr if it fails, and the new heapEnd if successful
     void shortenHeap();                      // shortens the size of the heap
 };
 

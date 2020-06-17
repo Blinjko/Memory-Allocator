@@ -2,6 +2,8 @@
 #include <cstddef>
 #include <unistd.h>
 #include <iostream>
+#include <cassert>
+#include <errno.h>
 
 using namespace Alloc;
 
@@ -171,6 +173,50 @@ Tag* Allocator::mergeBlocks(Tag *blockHeader)
     return blockHeader;
 }
 
+
+// Allocator expandHeap
+// returns nullptr if failed to expand heap
+// returns m_heapEnd if successful
+void* Allocator::expandHeap(std::size_t amount)
+{
+    // extend the heap
+    void *result = sbrk(amount);
+    
+    // will execute if sbrk failed to expand the heap
+    if(errno == ENOMEM)
+    {
+        errno = 0;
+        return nullptr;
+    }
+
+    // create a new block
+    Tag *newBlockHeader = static_cast<Tag*>(m_heapEnd);
+
+    // set the segmentSize, and other variables
+    newBlockHeader->segmentSize = amount - sizeof(Tag)*2;
+    newBlockHeader->free = true;
+    newBlockHeader->isHeader = true;
+
+    // create the footer
+    Tag *newBlockFooter = newBlockHeader + (newBlockHeader->segmentSize + sizeof(Tag)) / sizeof(Tag);
+
+    // set the variables
+    newBlockFooter->segmentSize = newBlockHeader->segmentSize;
+    newBlockFooter->free = true;
+    newBlockFooter->isHeader = false;
+
+    // set m_heapEnd to the new heap end
+    m_heapEnd = sbrk(0);
+
+    // make sure to count in the new tags
+    m_heapMemoryAllocated += sizeof(Tag)*2;
+
+    // update m_heapSize;
+    m_heapSize += amount;
+
+    return m_heapEnd;
+}
+
 // Allocator allocate function
 void* Allocator::allocate(std::size_t bytes)
 {
@@ -187,7 +233,7 @@ void* Allocator::allocate(std::size_t bytes)
         bytes += bitAlignment - (bytes % bitAlignment);
     }
 
-    // Tag pointer pointing to the first blocks header
+    // Tag pointer pointing to the first block's header
     Tag *blockHeader = static_cast<Tag*>(m_heapStart);
 
     // while not at the end of the heap or the block isn't free or the segmentSize is < bytes keep looping
@@ -200,9 +246,13 @@ void* Allocator::allocate(std::size_t bytes)
     // there was no adequet block of memory availble
     if(blockHeader == m_heapEnd)
     {
-        // temporary solution, idealy you would expand the heap for more memory
-        // will be implemented via expand heap function
-        return nullptr;
+        // attempt to expand the heap
+        void *result = expandHeap(bytes + sizeof(Tag)*2);
+
+        assert(result != nullptr && "Failed to allocate memory");
+        
+        // potentially helps with fragmentation
+        blockHeader = mergeBlocks(blockHeader);
     }
 
     // split the block if needed
