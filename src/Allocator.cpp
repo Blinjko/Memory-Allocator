@@ -273,3 +273,27 @@ void* Allocator::allocate(std::size_t bytes)
     // return a pointer to the start of the data segment
     return blockHeader + sizeof(Tag) / sizeof(Tag);
 }
+
+// Allocator deallocate method
+// frees the block who is in possesion of the memory
+// pointed to by the pointer argument memory
+// if not passed the original pointer returned by allocate, there is undefined behaviour
+void Allocator::deallocate(void *memory)
+{
+    // do some bounds checking
+    assert(memory != nullptr && memory >= m_heapStart && memory < m_heapEnd && "Cannot free an invalid pointer");
+
+    Tag *blockHeader = static_cast<Tag*>(memory) - sizeof(Tag) / sizeof(Tag);
+
+    assert(!blockHeader->free && "Attempted to free already free memory, Double free");
+    blockHeader->free = true;
+
+    Tag *blockFooter = blockHeader + (blockHeader->segmentSize + sizeof(Tag)) / sizeof(Tag);
+
+    blockFooter->free = true;
+
+    m_heapMemoryAllocated -= blockHeader->segmentSize;
+
+    mergeBlocks(blockHeader);
+
+}

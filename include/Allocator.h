@@ -46,7 +46,7 @@ class Allocator
     ~Allocator();                            // Allocator destructor
 
     void* allocate(std::size_t);             // allocates a given amount of memory
-    void deallocate();                       // frees a section of memory
+    void deallocate(void*);                  // frees the memory block in posesion of the pointer given
     
     void heapSize();                         // returns size of the heap
     void memoryAllocated();                  // return the number of bytes allocated
