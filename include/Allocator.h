@@ -37,7 +37,7 @@ class Allocator
     void *m_heapEnd;                         // holds a pointer to where the heap currently ends
     
     std::size_t m_heapSize;                  // current heap size in bytes
-    std::size_t m_heapMemoryAllocated;       // total heap memory allocated in bytes will always be <= m_heapSize
+    std::size_t m_heapMemoryAllocated;       // total heap memory allocated in bytes will always be <= m_heapSize, includes Tags
 
     public:
     static const bool m_allocatorActive;     // has the allocator been instantiated / activated
@@ -45,7 +45,7 @@ class Allocator
     Allocator(std::size_t);                  // Allocator contructor
     ~Allocator();                            // Allocator destructor
 
-    void allocate();                         // allocates a given amount of memory
+    void* allocate(std::size_t);             // allocates a given amount of memory
     void deallocate();                       // frees a section of memory
     
     void heapSize();                         // returns size of the heap

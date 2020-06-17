@@ -49,8 +49,14 @@ Allocator::Allocator(std::size_t initialSize) :
     
     initialBlockFooter->free = true;
     initialBlockFooter->isHeader = false;
+
+    // set the heapMemoryAllocated to the space of 2 Tag structs
+    // becuase 2 tag structs were made, the header and the footer,
+    // and they must be factored into m_heapMemoryAllocated
+    m_heapMemoryAllocated = sizeof(Tag)*2;
 }
 
+// Allocator splitBlock function
 // splits the given block into a block with the segmentSegment size of newSize
 // and creates a new block wich holds the remaining amount
 Tag* Allocator::splitBlock(Tag *blockHeader, std::size_t newSize)
@@ -58,6 +64,9 @@ Tag* Allocator::splitBlock(Tag *blockHeader, std::size_t newSize)
     // safety conditional
     if(blockHeader->segmentSize < newSize || !blockHeader->isHeader)
         return nullptr;
+
+    else if(blockHeader->segmentSize == newSize)
+        return blockHeader;
 
     // make a footer for the new block
     Tag *newBlockFooter = blockHeader + (sizeof(Tag) + newSize) / sizeof(Tag);
@@ -88,9 +97,14 @@ Tag* Allocator::splitBlock(Tag *blockHeader, std::size_t newSize)
     // set the original block headers segmentSize to the newSize
     blockHeader->segmentSize = newSize;
 
+    // 2 new Tags were made, so make sure to
+    // factor that into m_heapMemoryAllocated
+    m_heapMemoryAllocated += sizeof(Tag)*2;
+
     return blockHeader;
 }
 
+// Allocator mergeBlocks function
 // given a Tag pointer to a header of a block it will merge the blocks before and after the pointer
 // with the block the pointer is pointing to, as long as they are free
 Tag* Allocator::mergeBlocks(Tag *blockHeader)
@@ -107,7 +121,7 @@ Tag* Allocator::mergeBlocks(Tag *blockHeader)
         // get the previous blocks footer
         Tag *previousBlockFooter = blockHeader - sizeof(Tag) / sizeof(Tag);
 
-        // get the prebious blocks header, which is the footer - segmentSize + sizeof(Tag)
+        // get the previous blocks header, which is the footer - segmentSize + sizeof(Tag)
         Tag *previousBlockHeader = previousBlockFooter - (previousBlockFooter->segmentSize + sizeof(Tag)) / sizeof(Tag);
 
         // calcuate the new segment size
@@ -121,6 +135,11 @@ Tag* Allocator::mergeBlocks(Tag *blockHeader)
 
         // set the footer's segmentSize
         blockFooter->segmentSize = segmentSize;
+
+        // 2 tags were removed when merging the 2 blocks
+        // so subtract that amount from memory allocated
+        // remember tags are inlcluded in m_heapMemoryAllocated
+        m_heapMemoryAllocated -= sizeof(Tag)*2;
     }
 
     // if the block footer plus its size, is not equal to the heapEnd and the next block is free, execute this
@@ -144,6 +163,63 @@ Tag* Allocator::mergeBlocks(Tag *blockHeader)
 
         // set the blockFooter to nextBlockFooter
         blockFooter = nextBlockFooter;
+
+        // 2 Tags were removed so make sure to remove that
+        // space from m_heapMemoryAlocated
+        m_heapMemoryAllocated -= sizeof(Tag)*2;
     }
     return blockHeader;
+}
+
+// Allocator allocate function
+void* Allocator::allocate(std::size_t bytes)
+{
+    // check for negative
+    if(bytes <= 0)
+        return nullptr;
+
+
+    // make sure the # of bytes is a multiple of bitAlignment
+    // to ensure that the memory segment retured will
+    // be aligned to a boundry of bitAlignment's value
+    if(bytes % bitAlignment != 0)
+    {
+        bytes += bitAlignment - (bytes % bitAlignment);
+    }
+
+    // Tag pointer pointing to the first blocks header
+    Tag *blockHeader = static_cast<Tag*>(m_heapStart);
+
+    // while not at the end of the heap or the block isn't free or the segmentSize is < bytes keep looping
+    while((blockHeader != m_heapEnd) && (!blockHeader->free || (blockHeader->segmentSize < bytes )))
+    {
+        // move onto the next blocks header
+        blockHeader = blockHeader + (blockHeader->segmentSize + sizeof(Tag)*2) / sizeof(Tag);
+    }
+
+    // there was no adequet block of memory availble
+    if(blockHeader == m_heapEnd)
+    {
+        // temporary solution, idealy you would expand the heap for more memory
+        // will be implemented via expand heap function
+        return nullptr;
+    }
+
+    // split the block if needed
+    blockHeader = splitBlock(blockHeader, bytes);
+
+    // set the header free variable to false
+    blockHeader->free = false;
+    
+    // get the footer
+    Tag *blockFooter = blockHeader + (blockHeader->segmentSize + sizeof(Tag)) / sizeof(Tag);
+
+    // set the free variable to false
+    blockFooter->free = false;
+
+    // add the amount allocated to total memory allocated
+    m_heapMemoryAllocated += bytes;
+
+    // return a pointer to the start of the data segment
+    return blockHeader + sizeof(Tag) / sizeof(Tag);
 }
