@@ -190,7 +190,7 @@ Tag* Allocator::mergeBlocks(Tag *blockHeader)
 }
 
 
-// Allocator expandHeap
+// Allocator expandHeap function
 // returns nullptr if failed to expand heap
 // returns m_heapEnd if successful
 void* Allocator::expandHeap(std::size_t amount)
@@ -232,6 +232,114 @@ void* Allocator::expandHeap(std::size_t amount)
 
     return m_heapEnd;
 }
+
+// Allocator shortenHeap function
+// attemps to shorten heap by the given amount of bytes
+// NOTICE amount must be a multiple of bitAlignment or else there will be undefined behaviour
+void* Allocator::shortenHeap(std::size_t amount)
+{
+    // get the last block footer and header
+    Tag *blockFooter = static_cast<Tag*>(m_heapEnd) - sizeof(Tag) / sizeof(Tag);
+    Tag *blockHeader = blockFooter - (blockFooter->segmentSize + sizeof(Tag)) / sizeof(Tag);
+
+    // total number of bytes traversed that can be removed
+    std::size_t bytesTraversed = 0;
+    std::size_t blocksTraversed = 0;
+
+    while(bytesTraversed < amount)
+    {
+        if(!blockHeader->free)
+        {
+            return nullptr;
+        }
+
+        // add the two Tags and segmentSize to bytes traversed
+        bytesTraversed += sizeof(Tag)*2 + blockHeader->segmentSize;
+
+        // add 1 to blocks traversed
+        blocksTraversed++;
+
+        // if we still dont meet the amount
+        if(bytesTraversed < amount)
+        {
+            // and not the header is not the heapStart
+            if(blockHeader == m_heapStart)
+            {
+                return nullptr;
+            }
+
+            // then go back another block
+            blockFooter = blockHeader - sizeof(Tag) / sizeof(Tag);
+            blockHeader = blockFooter - (blockFooter->segmentSize + sizeof(Tag)) / sizeof(Tag);
+        }
+    }
+
+    // now we can safely assume that the memory from blockHeader to m_heapEnd is free
+
+    // if we perfectly fit the amount
+    if(bytesTraversed == amount)
+    {
+        errno = 0;
+
+        // move system break back
+        sbrk(-amount);
+        
+        // check for errors
+        if(errno == ENOMEM)
+        {
+            return nullptr;
+        }
+
+        // set the new heap end
+        m_heapEnd = sbrk(0);
+
+        // update heapSize
+        m_heapSize -= amount;
+
+        m_heapMemoryAllocated -= blocksTraversed * (sizeof(Tag)*2);
+    }
+
+    // not a perfect fit
+    else
+    {
+        std::size_t difference = bytesTraversed - amount;
+
+        errno = 0;
+        
+        // move system break back
+        sbrk(-amount);
+
+        // check for errors
+        if(errno == ENOMEM)
+        {
+            return nullptr;
+        }
+
+        // set m_heapEnd
+        m_heapEnd = sbrk(0);
+
+        // set m_heapSize
+        m_heapSize -= amount;
+
+        // we have severed a block, so now we must update the header
+        // and make a new footer for it
+        blockHeader->segmentSize = difference - sizeof(Tag)*2;
+
+        blockFooter = blockHeader + (blockHeader->segmentSize + sizeof(Tag)) / sizeof(Tag);
+        
+        // set variables
+        blockFooter->segmentSize = blockHeader->segmentSize;
+        blockFooter->free = true;
+        blockFooter->isHeader = false;
+
+        m_heapMemoryAllocated -= (blocksTraversed-1) * (sizeof(Tag)*2);
+
+        mergeBlocks(blockHeader);
+    }
+
+    return m_heapEnd;
+}
+
 
 // Allocator allocate function
 void* Allocator::allocate(std::size_t bytes)

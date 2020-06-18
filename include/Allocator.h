@@ -59,7 +59,7 @@ class Allocator
     Tag* splitBlock(Tag*, std::size_t);      // splits a block of memory into 2 different pieces given a header pointer and the blocks new size
     
     void* expandHeap(std::size_t);           // expands the size of the heap, returns nullptr if it fails, and the new heapEnd if successful
-    void shortenHeap();                      // shortens the size of the heap
+    void* shortenHeap(std::size_t);          // shortens the heap by the number of bytes passed, returns nullptr if fail, and new m_heapEnd if successful
 };
 
 }
