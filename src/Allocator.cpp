@@ -28,9 +28,12 @@ const bool Allocator::m_allocatorActive = false;
 
 
 // Allocator class constructor
-Allocator::Allocator(std::size_t initialSize) :
-    m_heapStart{sbrk(0)}
+Allocator::Allocator(std::size_t bitAlign, std::size_t initialSize) : 
+    m_heapStart{sbrk(0)}, bitAlignment{bitAlign}
 {
+    // Allocator can only be created once
+    assert(!m_allocatorActive && "Allocator already instantiated");
+
     if(initialSize % bitAlignment != 0)
     {
         // ensures the initial size is a multiple of bitAlignments value, by default it's 16
@@ -421,3 +424,7 @@ void Allocator::deallocate(void *memory)
     mergeBlocks(blockHeader);
 
 }
+
+std::size_t Allocator::heapSize() { return m_heapSize; }
+std::size_t Allocator::memoryAllocated() { return m_heapMemoryAllocated; }
+bool Allocator::active() { return m_allocatorActive; }
